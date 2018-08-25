@@ -20,7 +20,6 @@ from sklearn.metrics import *
 import shutil
 
 import os as _os
-_lfs = _os.environ['LFS_ROOT']
 
 class SVMClassifierTest(unittest.TestCase):
     """
@@ -114,11 +113,18 @@ class SVMClassifierTest(unittest.TestCase):
          'progress': lambda x: isinstance(x, tc.SFrame),
          'solver': lambda x: x == self.opts["solver"],
          'target': lambda x: x == self.target,
+         'training_accuracy': lambda x: x >= 0 and x <= 1,
          'training_iterations': lambda x: x > 0,
          'training_loss': lambda x: x > 0,
          'training_solver_status':\
                  lambda x: x == "SUCCESS: Optimal solution found.",
          'training_time': lambda x: x >= 0,
+         'training_confusion_matrix': lambda x: len(x) > 0,
+         'training_f1_score': lambda x: x > 0,
+         'training_precision': lambda x: x > 0,
+         'training_recall': lambda x: x > 0,
+         'training_report_by_class': lambda x: len(x) > 0,
+         'validation_data': lambda x: isinstance(x, tc.SFrame) and len(x) == 0,
             }
         self.fields_ans = self.get_ans.keys()
 
@@ -128,7 +134,7 @@ class SVMClassifierTest(unittest.TestCase):
         """
         model = self.model
         fields = model._list_fields()
-        self.assertEquals(set(fields), set(self.fields_ans))
+        self.assertEqual(set(fields), set(self.fields_ans))
 
     def test_get(self):
         """
@@ -180,7 +186,7 @@ class SVMClassifierTest(unittest.TestCase):
         """
         model = self.model
         ans =  model.classify(self.sf)
-        self.assertEquals(len(ans) ,len(self.sf))
+        self.assertEqual(len(ans) ,len(self.sf))
 
     def test_evaluate(self):
         """
@@ -216,26 +222,24 @@ class SVMClassifierTest(unittest.TestCase):
         self.model.save(filename)
         self.model = tc.load_model(filename)
 
-        try:
-            self.test_get()
-            print("Get passed")
-            self.test_coefficients()
-            print("Coefficients passed")
-            self.test_summary()
-            print("Summary passed")
-            self.test_repr()
-            print("Repr passed")
-            self.test_predict()
-            print("Predict passed")
-            self.test_classify()
-            print("Classify passed")
-            self.test_evaluate()
-            print("Evaluate passed")
-            self.test__list_fields()
-            print("List fields passed")
-            shutil.rmtree(filename)
-        except:
-            self.assertTrue(False, "Failed during save & load diagnostics")
+        # If this code throws an exception, it'll fail the test.
+        self.test_get()
+        print("Get passed")
+        self.test_coefficients()
+        print("Coefficients passed")
+        self.test_summary()
+        print("Summary passed")
+        self.test_repr()
+        print("Repr passed")
+        self.test_predict()
+        print("Predict passed")
+        self.test_classify()
+        print("Classify passed")
+        self.test_evaluate()
+        print("Evaluate passed")
+        self.test__list_fields()
+        print("List fields passed")
+        shutil.rmtree(filename)
 
 
 class SVMCreateTest(unittest.TestCase):
@@ -655,10 +659,10 @@ class VectorSVMTest(unittest.TestCase):
 
     model = tc.svm_classifier.create(self.sf, self.target, self.features,
         feature_rescaling = False)
-    self.assertEquals(model.num_features, len(self.features))
-    self.assertEquals(model.features, self.features)
-    self.assertEquals(model.num_unpacked_features, len(self.unpacked_features))
-    self.assertEquals(model.unpacked_features, self.unpacked_features)
+    self.assertEqual(model.num_features, len(self.features))
+    self.assertEqual(model.features, self.features)
+    self.assertEqual(model.num_unpacked_features, len(self.unpacked_features))
+    self.assertEqual(model.unpacked_features, self.unpacked_features)
 
 
 class DictSVMTest(unittest.TestCase):
@@ -745,10 +749,10 @@ class DictSVMTest(unittest.TestCase):
 
     model = tc.svm_classifier.create(self.sf, self.target, self.features,
         feature_rescaling = False)
-    self.assertEquals(model.num_features, len(self.features))
-    self.assertEquals(model.features, self.features)
-    self.assertEquals(model.num_unpacked_features, len(self.unpacked_features))
-    self.assertEquals(model.unpacked_features, self.unpacked_features)
+    self.assertEqual(model.num_features, len(self.features))
+    self.assertEqual(model.features, self.features)
+    self.assertEqual(model.num_unpacked_features, len(self.unpacked_features))
+    self.assertEqual(model.unpacked_features, self.unpacked_features)
 
 
 class SVMStringTargetTest(unittest.TestCase):
@@ -844,5 +848,5 @@ class TestStringTarget(unittest.TestCase):
         evaluation = model.evaluate(sf)
 
         # Assert
-        self.assertEquals(['cat-0', 'cat-1'],
+        self.assertEqual(['cat-0', 'cat-1'],
             sorted(list(evaluation['confusion_matrix']['target_label'].unique())))

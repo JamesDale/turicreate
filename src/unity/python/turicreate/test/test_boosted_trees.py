@@ -21,8 +21,8 @@ from array import array
 
 import os as _os
 
-_lfs = _os.environ['LFS_ROOT']
-mushroom_dataset = _os.path.join(_lfs, 'datasets', 'xgboost','mushroom.csv')
+dirname = _os.path.dirname(__file__)
+mushroom_dataset = _os.path.join(dirname, 'mushroom.csv')
 
 
 _DEFAULT_OPTIONS_REGRESSION = {
@@ -92,6 +92,7 @@ class BoostedTreesRegressionTest(unittest.TestCase):
                 'training_max_error': lambda x: x > 0,
                 'training_time': lambda x: x >= 0,
                 'trees_json': lambda x: isinstance(x, list),
+                'validation_data': lambda x: isinstance(x, tc.SFrame) and len(x) == len(self.dtest),
                 'validation_rmse': lambda x: x > 0,
                 'validation_max_error': lambda x: x > 0,
                 'random_seed': lambda x: x is None,
@@ -99,8 +100,8 @@ class BoostedTreesRegressionTest(unittest.TestCase):
                 'metric': lambda x: x == 'auto',
                 'early_stopping_rounds': lambda x: x is None,
                 'model_checkpoint_interval': lambda x: x == 5,
-                'model_checkpoint_path': lambda x: x == None,
-                'resume_from_checkpoint': lambda x: x == None,
+                'model_checkpoint_path': lambda x: x is None,
+                'resume_from_checkpoint': lambda x: x is None,
                 }
 
         self.metrics = ["rmse", "max_error"]
@@ -126,7 +127,7 @@ class BoostedTreesRegressionTest(unittest.TestCase):
         """
         model = self.model
         fields =  model._list_fields()
-        self.assertEquals(set(fields), set(self.fields_ans))
+        self.assertEqual(set(fields), set(self.fields_ans))
 
     def test_get(self):
         """
@@ -216,7 +217,7 @@ class BoostedTreesRegressionTest(unittest.TestCase):
 
         # Default
         ans = model.evaluate(self.dtrain)
-        self.assertEquals(sorted(ans.keys()), sorted(self.metrics))
+        self.assertEqual(sorted(ans.keys()), sorted(self.metrics))
         for m in self.metrics:
           check_metric(ans, m)
 
@@ -233,7 +234,12 @@ class BoostedTreesRegressionTest(unittest.TestCase):
 
     def test_feature_importance(self):
         sf = self.model.get_feature_importance()
-        self.assertEquals(sf.column_names(), ["name", "index", "count"])
+        self.assertEqual(sf.column_names(), ["name", "index", "count"])
+
+    def test_trees_json(self):
+        tree_0_vert_0 = eval(self.model.trees_json[0])['vertices'][0]
+        self.assertEquals(set(tree_0_vert_0.keys()),
+                          set(['name','value_hexadecimal','yes_child','cover','missing_child','no_child','type','id','value','gain']))
 
     def test_list_and_dict_type(self):
         rmse_threshold = 0.2
@@ -384,8 +390,23 @@ def binary_classification_integer_target(cls):
             'metric': lambda x: x == 'auto',
             'early_stopping_rounds': lambda x: x is None,
             'model_checkpoint_interval': lambda x: x == 5,
-            'model_checkpoint_path': lambda x: x == None,
-            'resume_from_checkpoint': lambda x: x == None,
+            'model_checkpoint_path': lambda x: x is None,
+            'resume_from_checkpoint': lambda x: x is None,
+            'training_auc': lambda x: x > 0,
+            'training_confusion_matrix': lambda x: len(x) > 0,
+            'training_f1_score': lambda x: x > 0,
+            'training_precision': lambda x: x > 0,
+            'training_recall': lambda x: x > 0,
+            'training_report_by_class': lambda x: len(x) > 0,
+            'training_roc_curve': lambda x: len(x) > 0,
+            'validation_data': lambda x: isinstance(x, tc.SFrame) and len(x) == len(cls.dtest),
+            'validation_auc': lambda x: x > 0,
+            'validation_confusion_matrix': lambda x: len(x) > 0,
+            'validation_f1_score': lambda x: x > 0,
+            'validation_precision': lambda x: x > 0,
+            'validation_recall': lambda x: x > 0,
+            'validation_report_by_class': lambda x: len(x) > 0,
+            'validation_roc_curve': lambda x: len(x) > 0,
             }
     cls.fields_ans = cls.get_ans.keys()
 
@@ -472,7 +493,7 @@ class BoostedTreesClassifierTest(unittest.TestCase):
         """
         model = self.model
         fields =  model._list_fields()
-        self.assertEquals(set(fields), set(self.fields_ans))
+        self.assertEqual(set(fields), set(self.fields_ans))
 
     def test_get(self):
         """
@@ -541,17 +562,17 @@ class BoostedTreesClassifierTest(unittest.TestCase):
         for k in ks:
 
             y1 = self.model.predict_topk(self.dtest, k=k, output_type='rank')
-            self.assertEquals(y1['class'].dtype, self.type)
-            self.assertEquals(y1['id'].dtype, int)
-            self.assertEquals(y1.num_rows(), self.dtest.num_rows() * k)
+            self.assertEqual(y1['class'].dtype, self.type)
+            self.assertEqual(y1['id'].dtype, int)
+            self.assertEqual(y1.num_rows(), self.dtest.num_rows() * k)
 
             y2 = self.model.predict_topk(self.dtest, k=k, output_type='probability')
-            self.assertEquals(y2['id'].dtype, int)
-            self.assertEquals(y2.num_rows(), self.dtest.num_rows() * k)
+            self.assertEqual(y2['id'].dtype, int)
+            self.assertEqual(y2.num_rows(), self.dtest.num_rows() * k)
 
             y3 = self.model.predict_topk(self.dtest, k=k, output_type='margin')
-            self.assertEquals(y3['id'].dtype, int)
-            self.assertEquals(y3.num_rows(), self.dtest.num_rows() * k)
+            self.assertEqual(y3['id'].dtype, int)
+            self.assertEqual(y3.num_rows(), self.dtest.num_rows() * k)
             self.assertTrue(all(y3[y3['class'] == 0]['margin'] == 0.0))
 
             test_sf = tc.SFrame()
@@ -561,24 +582,24 @@ class BoostedTreesClassifierTest(unittest.TestCase):
             test_sf['error'] = test_sf.apply(lambda x: x['rank'] != x['prob']\
                                                              or x['rank'] != x['margin'])
 
-            self.assertEquals(test_sf['error'].sum(), 0)
+            self.assertEqual(test_sf['error'].sum(), 0)
 
     def test_predict(self):
 
         # Default, output_type = class
         y1 = self.model.predict(self.dtest)
-        self.assertEquals(len(y1), self.dtest.num_rows())
-        self.assertEquals(y1.dtype, self.type)
+        self.assertEqual(len(y1), self.dtest.num_rows())
+        self.assertEqual(y1.dtype, self.type)
 
         # Default, output_type = class
         y1 = self.model.predict(self.dtest, output_type='class')
-        self.assertEquals(len(y1), self.dtest.num_rows())
-        self.assertEquals(y1.dtype, self.type)
+        self.assertEqual(len(y1), self.dtest.num_rows())
+        self.assertEqual(y1.dtype, self.type)
 
         # output_type = probability vector
         y1 = self.model.predict(self.dtest, output_type='probability_vector')
-        self.assertEquals(len(y1), self.dtest.num_rows())
-        self.assertEquals(y1.dtype, array)
+        self.assertEqual(len(y1), self.dtest.num_rows())
+        self.assertEqual(y1.dtype, array)
         self.assertTrue(all(y1.apply(lambda x: abs(sum(x) - 1.0)) < 1e-5))
 
         k = self.model.num_classes
@@ -587,18 +608,18 @@ class BoostedTreesClassifierTest(unittest.TestCase):
             y_class = self.model.predict(self.dtest, 'class') == class_one
 
             y1 = self.model.predict(self.dtest, 'margin')
-            self.assertEquals(len(y1), self.dtest.num_rows())
+            self.assertEqual(len(y1), self.dtest.num_rows())
             self.assertTrue(all(y_class == (y1 > 0.0)))
 
             y1 = self.model.predict(self.dtest, 'probability')
-            self.assertEquals(len(y1), self.dtest.num_rows())
+            self.assertEqual(len(y1), self.dtest.num_rows())
             self.assertTrue(all(y_class == (y1 > 0.5)))
 
     def test_classify(self):
         y1 = self.model.classify(self.dtest)
-        self.assertEquals(len(y1), len(self.dtest))
-        self.assertEquals(y1['class'].dtype, self.type)
-        self.assertEquals(set(y1.column_names()), set(['class', 'probability']))
+        self.assertEqual(len(y1), len(self.dtest))
+        self.assertEqual(y1['class'].dtype, self.type)
+        self.assertEqual(set(y1.column_names()), set(['class', 'probability']))
 
     def test_evaluate(self):
         t = self.dtrain[self.target]
@@ -625,13 +646,13 @@ class BoostedTreesClassifierTest(unittest.TestCase):
                     .sort(['target_label', 'predicted_label'])
             ans_cf = self.sm_metrics['confusion_matrix']\
                     .sort(['target_label', 'predicted_label'])
-            self.assertEquals(list(cf['count']), list(ans_cf['count']))
+            self.assertEqual(list(cf['count']), list(ans_cf['count']))
 
         def check_roc_curve(ans):
             self.assertTrue(ans is not None)
             self.assertTrue('roc_curve' in ans)
             roc = ans['roc_curve']
-            self.assertEquals(type(roc), tc.SFrame)
+            self.assertEqual(type(roc), tc.SFrame)
 
         def check_metric(ans, metric):
             if metric == 'confusion_matrix':
@@ -649,7 +670,7 @@ class BoostedTreesClassifierTest(unittest.TestCase):
 
         # Default
         ans = model.evaluate(self.dtrain)
-        self.assertEquals(sorted(ans.keys()), sorted(ans_metrics))
+        self.assertEqual(sorted(ans.keys()), sorted(ans_metrics))
         for m in ans_metrics:
           check_metric(ans, m)
 
@@ -675,7 +696,7 @@ class BoostedTreesClassifierTest(unittest.TestCase):
 
     def test_feature_importance(self):
         sf = self.model.get_feature_importance()
-        self.assertEquals(sf.column_names(), ["name", "index", "count"])
+        self.assertEqual(sf.column_names(), ["name", "index", "count"])
 
     def test_list_and_dict_type(self):
         accuracy_threshold = 0.8
@@ -746,5 +767,6 @@ class TestStringTarget(unittest.TestCase):
         evaluation = model.evaluate(sf)
 
         # Assert
-        self.assertEquals(['cat-0', 'cat-1'],
+        self.assertEqual(['cat-0', 'cat-1'],
             sorted(list(evaluation['confusion_matrix']['target_label'].unique())))
+

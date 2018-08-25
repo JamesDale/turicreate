@@ -12,13 +12,9 @@ from cy_flexible_type cimport pyobject_from_flexible_type
 from cy_callback cimport register_exception
 from .._gl_pickle import GLUnpickler
 
-from copy import deepcopy
 from libcpp.string cimport string
 from libcpp.vector cimport vector
-import ctypes
 import os
-import traceback
-import sys
 cimport cython
 
 from random import seed as set_random_seed
@@ -191,7 +187,7 @@ cdef class lambda_evaluator(object):
         for i in range(n):
             if lcd.input_keys[0][i].size() != n_keys:
                 raise ValueError("Row %d does not have the correct number of rows (%d, should be %d)"
-                                 % (lcd.input_keys[0][i].size(), n))
+                                 % (i, lcd.input_keys[0][i].size(), n))
 
             arg_dict = self.arg_dict_base.copy()
             

@@ -6,9 +6,12 @@
 from __future__ import print_function as _
 from __future__ import division as _
 from __future__ import absolute_import as _
+
+import turicreate as _tc
 from turicreate.data_structures.sgraph import SGraph as _SGraph
 import turicreate.toolkits._main as _main
 from turicreate.toolkits.graph_analytics._model_base import GraphAnalyticsModel as _ModelBase
+from turicreate.cython.cy_server import QuietProgress
 
 
 class PagerankModel(_ModelBase):
@@ -35,7 +38,7 @@ class PagerankModel(_ModelBase):
     +-------------------+-----------------------------------------------------------+
     | Field             | Description                                               |
     +===================+===========================================================+
-    | reset_probability | The probablity of random jumps to any node in the graph   |
+    | reset_probability | The probability of random jumps to any node in the graph  |
     +-------------------+-----------------------------------------------------------+
     | graph             | A new SGraph with the pagerank as a vertex property       |
     +-------------------+-----------------------------------------------------------+
@@ -50,7 +53,7 @@ class PagerankModel(_ModelBase):
     +-------------------+-----------------------------------------------------------+
     | training_time     | Total training time of the model                          |
     +-------------------+-----------------------------------------------------------+
-    | max_iterations    | The maximun number of iterations to run                   |
+    | max_iterations    | The maximum number of iterations to run                   |
     +-------------------+-----------------------------------------------------------+
 
 
@@ -80,9 +83,9 @@ class PagerankModel(_ModelBase):
 
     def _setting_fields(self):
         ret = super(PagerankModel, self)._setting_fields()
-        ret['probablity of random jumps to any node in the graph'] = 'reset_probability'
+        ret['probability of random jumps to any node in the graph'] = 'reset_probability'
         ret['convergence threshold (L1 norm)'] = 'threshold'
-        ret['maximun number of iterations'] = 'max_iterations'
+        ret['maximum number of iterations'] = 'max_iterations'
         return ret
 
     def _get_version(self):
@@ -126,7 +129,7 @@ def create(graph, reset_probability=0.15,
         pagerank value.
 
     max_iterations : int, optional
-        The maximun number of iterations to run.
+        The maximum number of iterations to run.
 
     _single_precision : bool, optional
         If true, running pagerank in single precision. The resulting
@@ -154,7 +157,7 @@ def create(graph, reset_probability=0.15,
     If given an :class:`~turicreate.SGraph` ``g``, we can create
     a :class:`~turicreate.pagerank.PageRankModel` as follows:
 
-    >>> g = turicreate.load_graph('http://snap.stanford.edu/data/email-Enron.txt.gz', format='snap')
+    >>> g = turicreate.load_sgraph('http://snap.stanford.edu/data/email-Enron.txt.gz', format='snap')
     >>> pr = turicreate.pagerank.create(g)
 
     We can obtain the page rank corresponding to each vertex in the graph ``g``
@@ -181,7 +184,8 @@ def create(graph, reset_probability=0.15,
             'single_precision': _single_precision,
             'graph': graph.__proxy__}
 
-    params = _main.run('pagerank', opts, verbose)
+    with QuietProgress(verbose):
+        params = _tc.extensions._toolkits.graph.pagerank.create(opts)
     model = params['model']
 
     return PagerankModel(model)

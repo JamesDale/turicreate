@@ -196,8 +196,8 @@ def create(dataset, target, features=None, l2_penalty=1e-2, l1_penalty=0.0,
     - A constant term is automatically added for the model intercept. This term
       is not regularized.
 
-    - Standard errors on coefficients are only availiable when `solver=newton`
-      or when the default `auto` solver option choses the newton method and if
+    - Standard errors on coefficients are only available when `solver=newton`
+      or when the default `auto` solver option chooses the newton method and if
       the number of examples in the training data is more than the number of
       coefficients. If standard errors cannot be estimated, a column of `None`
       values are returned.
@@ -217,7 +217,7 @@ def create(dataset, target, features=None, l2_penalty=1e-2, l1_penalty=0.0,
 
     - Zhu, C., et al. (1997) `Algorithm 778: L-BFGS-B: Fortran subroutines for
       large-scale bound-constrained optimization
-      <http://dl.acm.org/citation.cfm?id=279236>`_. ACM Transactions on
+      <https://dl.acm.org/citation.cfm?id=279236>`_. ACM Transactions on
       Mathematical Software 23(4) pp.550-560.
 
     - Barzilai, J. and Borwein, J. `Two-Point Step Size Gradient Methods
@@ -231,7 +231,7 @@ def create(dataset, target, features=None, l2_penalty=1e-2, l1_penalty=0.0,
 
     - Zhang, T. (2004) `Solving large scale linear prediction problems using
       stochastic gradient descent algorithms
-      <http://dl.acm.org/citation.cfm?id=1015332>`_. ICML '04: Proceedings of
+      <https://dl.acm.org/citation.cfm?id=1015332>`_. ICML '04: Proceedings of
       the twenty-first international conference on Machine learning p.116.
 
 
@@ -341,7 +341,6 @@ class LinearRegression(_SupervisedLearningModel):
 
     """
     def __init__(self, model_proxy):
-        '''__init__(self)'''
         self.__proxy__ = model_proxy
         self.__name__ = self.__class__._native_name()
 
@@ -444,7 +443,11 @@ class LinearRegression(_SupervisedLearningModel):
         short_description = _coreml_utils._mlmodel_short_description(display_name)
         context = {"class": self.__class__.__name__,
                    "version": _turicreate.__version__,
-                   "short_description": short_description}
+                   "short_description": short_description,
+                   'user_defined':{
+                    'turicreate_version': _turicreate.__version__
+                   }
+                  }
         _linear_regression_export_as_model_asset(self.__proxy__, filename, context)
 
     def _get(self, field):
@@ -560,7 +563,7 @@ class LinearRegression(_SupervisedLearningModel):
 
         return super(LinearRegression, self).predict(dataset, missing_value_action=missing_value_action)
 
-    
+
     def evaluate(self, dataset, metric='auto', missing_value_action='auto'):
         r"""Evaluate the model by making target value predictions and comparing
         to actual values.

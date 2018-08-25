@@ -9,13 +9,10 @@ from __future__ import absolute_import as _
 import sys
 import os
 import logging
-from distutils.util import get_platform as _get_platform
 import ctypes
 import glob as _glob
 import subprocess as _subprocess
 from ._scripts import _pylambda_worker
-from copy import copy
-from .util import sys_info as _sys_info
 
 if sys.version_info.major == 2:
     import ConfigParser as _ConfigParser
@@ -24,7 +21,7 @@ else:
 
 def make_unity_server_env():
     """
-    Returns the environemnt for unity_server.
+    Returns the environment for unity_server.
 
     The environment is necessary to start the unity_server
     by setting the proper environments for shared libraries,
@@ -60,13 +57,20 @@ def make_unity_server_env():
     # When using virtualenv with ipython (which is outside virtualenv),
     # all subprocess launched under unity_server will use the
     # conda binary outside of virtualenv, which lacks the access
-    # to all packeages installed inside virtualenv.
+    # to all packages installed inside virtualenv.
     if 'PYTHONEXECUTABLE' in env:
         del env['PYTHONEXECUTABLE']
 
     # Set mxnet envvars
     if 'MXNET_CPU_WORKER_NTHREADS' not in env:
-        env['MXNET_CPU_WORKER_NTHREADS'] = max(2, env.get('OMP_NUM_THREADS', str(_sys_info.NUM_CPUS)))
+        from multiprocessing import cpu_count
+        num_cpus = int(env.get('OMP_NUM_THREADS', cpu_count()))
+        if sys.platform == 'darwin':
+            num_workers = num_cpus
+        else:
+            # On Linux, BLAS doesn't seem to tolerate larger numbers of workers.
+            num_workers = min(2, num_cpus)
+        env['MXNET_CPU_WORKER_NTHREADS'] = str(num_workers)
 
     ## set local to be c standard so that unity_server will run ##
     env['LC_ALL']='C'
@@ -127,15 +131,11 @@ def get_current_platform_dll_extension():
 
 def test_pylambda_worker():
     """
-    Tests the pylambda workers by spawning off a seperate python
+    Tests the pylambda workers by spawning off a separate python
     process in order to print out additional diagnostic information
     in case there is an error.
     """
-
     import os
-
-    environment = os.environ.copy()
-    
     from os.path import join
     from os.path import exists
     import tempfile

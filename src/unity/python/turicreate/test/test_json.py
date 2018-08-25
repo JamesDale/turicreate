@@ -5,6 +5,12 @@
 # be found in the LICENSE.txt file or at https://opensource.org/licenses/BSD-3-Clause
 # This software may be modified and distributed under the terms
 # of the BSD license. See the LICENSE file for details.
+
+# This file tests invertibility (serializing to/from) the "serializable" format
+# of variant_type (produced by extensions.json). This extension results in a
+# naively-JSON-serializable flexible_type that should retain all necessary
+# information to be rehydrated into the original variant_type.
+
 from __future__ import print_function as _
 from __future__ import division as _
 from __future__ import absolute_import as _
@@ -17,9 +23,13 @@ import os
 import pytz
 import sys
 import unittest
+import tempfile
 
 from . import util
 from .. import _json # turicreate._json
+from ..data_structures.sarray import SArray
+from ..data_structures.sframe import SFrame
+from ..data_structures.sgraph import SGraph, Vertex, Edge
 
 if sys.version_info.major == 3:
     long = int
@@ -48,14 +58,11 @@ image_info = [image_info(u) for u in image_urls]
 _SFrameComparer = util.SFrameComparer()
 
 class JSONTest(unittest.TestCase):
-    def _assertEquals(self, x, y):
-        from ..data_structures.sarray import SArray
-        from ..data_structures.sframe import SFrame
-        from ..data_structures.sgraph import SGraph
+    def _assertEqual(self, x, y):
         if type(x) in [long,int]:
             self.assertTrue(type(y) in [long,int])
         else:
-            self.assertEquals(type(x), type(y))
+            self.assertEqual(type(x), type(y))
         if isinstance(x, SArray):
             _SFrameComparer._assert_sarray_equal(x, y)
         elif isinstance(x, SFrame):
@@ -64,13 +71,13 @@ class JSONTest(unittest.TestCase):
             _SFrameComparer._assert_sgraph_equal(x, y)
         elif isinstance(x, dict):
             for (k1,v1),(k2,v2) in zip(sorted(x.items()), sorted(y.items())):
-                self._assertEquals(k1, k2)
-                self._assertEquals(v1, v2)
+                self._assertEqual(k1, k2)
+                self._assertEqual(v1, v2)
         elif isinstance(x, list):
             for v1,v2 in zip(x, y):
-                self._assertEquals(v1, v2)
+                self._assertEqual(v1, v2)
         else:
-            self.assertEquals(x, y)
+            self.assertEqual(x, y)
 
     def _run_test_case(self, value):
         # test that JSON serialization is invertible with respect to both
@@ -88,11 +95,11 @@ class JSONTest(unittest.TestCase):
         result = _json.from_serializable(data, schema)
         #print("Deserialized Result: %s" % result)
         #print("----------------------------------")
-        self._assertEquals(result, value)
+        self._assertEqual(result, value)
         # test that JSON serialization gives expected result
         serialized = _json.dumps(value)
         deserialized = _json.loads(serialized)
-        self._assertEquals(deserialized, value)
+        self._assertEqual(deserialized, value)
 
     @unittest.skipIf(sys.platform == 'win32', "Windows long issue")
     def test_int(self):
@@ -174,9 +181,8 @@ class JSONTest(unittest.TestCase):
         ]]
 
     def test_sarray_to_json(self):
-        from ..data_structures.sarray import SArray
-        from ..data_structures.sframe import SFrame
         from .. import Image
+
         d = datetime.datetime(year=2016, month=3, day=5)
         [self._run_test_case(value) for value in [
             SArray(),
@@ -210,16 +216,12 @@ class JSONTest(unittest.TestCase):
         ]]
 
     def test_sframe_to_json(self):
-        from ..data_structures.sframe import SFrame
         [self._run_test_case(value) for value in [
             SFrame(),
             SFrame({'foo': [1,2,3,4], 'bar': [None, "Hello", None, "World"]}),
         ]]
 
     def test_sgraph_to_json(self):
-        from ..data_structures.sframe import SFrame
-        from ..data_structures.sgraph import SGraph, Vertex, Edge
-
         sg = SGraph()
         self._run_test_case(sg)
 
@@ -242,11 +244,46 @@ class JSONTest(unittest.TestCase):
     def test_variant_to_json(self):
         # not tested in the cases above: variant_type other than SFrame-like
         # but containing SFrame-like (so cannot be a flexible_type)
-        from ..data_structures.sarray import SArray
-        from ..data_structures.sframe import SFrame
         sf = SFrame({'col1': [1,2], 'col2': ['hello','world']})
         sa = SArray([5.0,6.0,7.0])
         [self._run_test_case(value) for value in [
             {'foo': sf, 'bar': sa},
             [sf, sa],
         ]]
+
+    def test_malformed_json(self):
+        out = """
+[
+  {
+  "text": "["I", "have", "an", "atlas"]",
+  "label": ["NONE", "NONE", "NONE", "NONE"]
+  },
+  {
+  "text": ["These", "are", "my", "dogs"],
+  "label": ["NONE", "NONE", "NONE", "PLN"]
+  },
+  {
+  "text": ["The", "sheep", "are", "fluffy"],
+  "label": ["NONE","PLN","NONE","NONE"]
+  },
+  {
+  "text": ["Billiards", "is", "my", "favourite", "game"],
+  "label": ["NONE", "NONE", "NONE", "NONE", "NONE"]
+  },
+  {
+  "text": ["I", "went", "to", "five", "sessions", "today"],
+  "label": ["NONE", "NONE", "NONE", "NONE", "PLN", "NONE"]
+  }
+ ]
+ """
+        with tempfile.NamedTemporaryFile('w') as f:
+            f.write(out)
+            f.flush()
+
+            self.assertRaises(RuntimeError, SArray.read_json, f.name)
+            self.assertRaises(RuntimeError, SFrame.read_json, f.name)
+
+    def test_nonexistant_json(self):
+        self.assertRaises(IOError, SArray.read_json, '/nonexistant.json')
+        self.assertRaises(IOError, SFrame.read_json, '/nonexistant.json')
+

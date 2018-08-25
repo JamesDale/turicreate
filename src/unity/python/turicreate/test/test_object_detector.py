@@ -64,8 +64,8 @@ def _get_data(feature, annotations):
             x = (left + right) / 2
             y = (top + bottom) / 2
 
-            width = right - left
-            height = bottom - top
+            width = max(right - left, 1)
+            height = max(bottom - top, 1)
 
             label = {
                 'coordinates': {
@@ -104,15 +104,12 @@ class ObjectDetectorTest(unittest.TestCase):
 
         # Model
         self.sf = _get_data(feature=self.feature, annotations=self.annotations)
-        params = {
-            'batch_size': 2,
-        }
         self.model = tc.object_detector.create(self.sf,
                                                feature=self.feature,
                                                annotations=self.annotations,
+                                               batch_size=2,
                                                max_iterations=1,
-                                               model=self.pre_trained_model,
-                                               _advanced_parameters=params)
+                                               model=self.pre_trained_model)
 
         ## Answers
         self.opts = self.def_opts.copy()
@@ -143,15 +140,15 @@ class ObjectDetectorTest(unittest.TestCase):
         }
         self.fields_ans = self.get_ans.keys()
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_create_with_missing_feature(self):
         tc.object_detector.create(self.sf, feature='wrong_feature', annotations=self.annotations)
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_create_with_missing_annotations(self):
         tc.object_detector.create(self.sf, feature=self.feature, annotations='wrong_annotations')
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_create_with_invalid_annotations_list_coord(self):
         sf = self.sf.head()
         sf[self.annotations] = sf[self.annotations].apply(
@@ -159,7 +156,7 @@ class ObjectDetectorTest(unittest.TestCase):
 
         tc.object_detector.create(sf)
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_create_with_invalid_annotations_not_dict(self):
         sf = self.sf.head()
         sf[self.annotations] = sf[self.annotations].apply(
@@ -167,25 +164,32 @@ class ObjectDetectorTest(unittest.TestCase):
 
         tc.object_detector.create(sf)
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_create_with_empty_dataset(self):
         tc.object_detector.create(self.sf[:0])
 
-    def test_invalid_num_gpus(self):
-        num_gpus = tc.config.get_num_gpus()
-        tc.config.set_num_gpus(-2)
-        with self.assertRaises(_ToolkitError):
-            tc.object_detector.create(self.sf)
-        tc.config.set_num_gpus(num_gpus)
+    def test_dict_annotations(self):
+        sf_copy = self.sf[:]
+        sf_copy[self.annotations] = sf_copy[self.annotations].apply(lambda x: x[0] if len(x) > 0 else None)
+        dict_model = tc.object_detector.create(sf_copy,
+                          feature=self.feature,
+                          annotations=self.annotations,
+                          max_iterations=1,
+                          model=self.pre_trained_model)
+
+        pred = dict_model.predict(sf_copy)
+        metrics = dict_model.evaluate(sf_copy)
+        annotated_img = tc.object_detector.util.draw_bounding_boxes(sf_copy[self.feature],
+                sf_copy[self.annotations])
 
     def test_extra_classes(self):
         # Create while the data has extra classes
         model = tc.object_detector.create(self.sf, classes=_CLASSES[:2], max_iterations=1)
-        self.assertEquals(len(model.classes), 2)
+        self.assertEqual(len(model.classes), 2)
 
         # Evaluate while the data has extra classes
         ret = model.evaluate(self.sf.head())
-        self.assertEquals(len(ret['average_precision']), 2)
+        self.assertEqual(len(ret['average_precision_50']), 2)
 
     def test_predict(self):
         sf = self.sf.head()
@@ -196,22 +200,34 @@ class ObjectDetectorTest(unittest.TestCase):
 
         # Check the structure of the output
         _raise_error_if_not_sarray(pred)
-        self.assertEquals(len(pred), len(sf))
+        self.assertEqual(len(pred), len(sf))
 
         # Make sure SFrame was not altered
-        self.assertEquals([col for col in sf.column_names() if col.startswith('_')],
-                          [])
+        self.assertEqual([col for col in sf.column_names() if col.startswith('_')],
+                         [])
 
         # Predict should work on no input (and produce no predictions)
         pred0 = self.model.predict(sf[:0])
-        self.assertEquals(len(pred0), 0)
+        self.assertEqual(len(pred0), 0)
+
+    def test_single_image(self):
+        # Predict should work on a single image and product a list of dictionaries
+        # (we set confidene threshold to 0 to ensure predictions are returned)
+        pred = self.model.predict(self.sf[self.feature][0], confidence_threshold=0)
+        self.assertTrue(isinstance(pred, list))
+        self.assertTrue(isinstance(pred[0], dict))
+
+    def test_sarray(self):
+        sarray = self.sf.head()[self.feature]
+        pred = self.model.predict(sarray, confidence_threshold=0)
+        self.assertEqual(len(pred), len(sarray))
 
     def test_confidence_threshold(self):
         sf = self.sf.head()
         pred = self.model.predict(sf.head(), confidence_threshold=1.0)
         stacked = tc.object_detector.util.stack_annotations(pred)
         # This should return no predictions, especially with an unconverged model
-        self.assertEquals(len(stacked), 0)
+        self.assertEqual(len(stacked), 0)
 
         pred = self.model.predict(sf.head(), confidence_threshold=0.0)
         stacked = tc.object_detector.util.stack_annotations(pred)
@@ -222,27 +238,27 @@ class ObjectDetectorTest(unittest.TestCase):
         ret = self.model.evaluate(self.sf.head(), metric='average_precision')
 
         self.assertTrue(set(ret), {'average_precision'})
-        self.assertEquals(set(ret['average_precision'].keys()), set(_CLASSES))
+        self.assertEqual(set(ret['average_precision'].keys()), set(_CLASSES))
 
         ret = self.model.evaluate(self.sf.head())
-
-        self.assertTrue(set(ret), {'average_precision', 'mean_average_precision'})
-        self.assertTrue(isinstance(ret['mean_average_precision'], float))
+        self.assertEqual(set(ret), {'mean_average_precision_50', 'average_precision_50'})
+        self.assertTrue(isinstance(ret['mean_average_precision_50'], float))
+        self.assertEqual(set(ret['average_precision_50'].keys()), set(_CLASSES))
 
         # Empty dataset should not fail with error (although it should to 0
         # metrics)
         ret = self.model.evaluate(self.sf[:0])
-        self.assertEquals(ret['mean_average_precision'], 0.0)
+        self.assertEqual(ret['mean_average_precision_50'], 0.0)
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_evaluate_invalid_metric(self):
         self.model.evaluate(self.sf.head(), metric='not-supported-metric')
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_evaluate_invalid_format(self):
         self.model.evaluate(self.sf.head(), output_type='not-supported-format')
 
-    @pytest.mark.xfail(rases = _ToolkitError)
+    @pytest.mark.xfail(raises = _ToolkitError)
     def test_evaluate_missing_annotations(self):
         sf = self.sf.copy()
         del sf[self.annotations]
@@ -252,17 +268,20 @@ class ObjectDetectorTest(unittest.TestCase):
         from PIL import Image
         import coremltools
         filename = tempfile.mkstemp('bingo.mlmodel')[1]
-        self.model.export_coreml(filename)
+        self.model.export_coreml(filename, 
+            include_non_maximum_suppression=False)
 
         coreml_model = coremltools.models.MLModel(filename)
         img = self.sf[0:1][self.feature][0]
         img_fixed = tc.image_analysis.resize(img, 416, 416, 3)
         pil_img = Image.fromarray(img_fixed.pixel_data)
         if _mac_ver() >= (10, 13):
-            ret = coreml_model.predict({self.feature: pil_img}, usesCPUOnly = True)
-            self.assertEquals(ret['coordinates'].shape[1], 4)
-            self.assertEquals(ret['confidence'].shape[1], len(_CLASSES))
-            self.assertEquals(ret['coordinates'].shape[0], ret['confidence'].shape[0])
+            ret = coreml_model.predict({self.feature: pil_img}, 
+                usesCPUOnly = True)
+            self.assertEqual(ret['coordinates'].shape[1], 4)
+            self.assertEqual(ret['confidence'].shape[1], len(_CLASSES))
+            self.assertEqual(ret['coordinates'].shape[0], 
+                ret['confidence'].shape[0])
             # A numeric comparison of the resulting of top bounding boxes is
             # not that meaningful unless the model has converged
 
@@ -274,20 +293,53 @@ class ObjectDetectorTest(unittest.TestCase):
         sf = tc.SFrame({'image': [self.sf[self.feature][0]],
                         'ann': [self.sf[self.annotations][0][:1]]})
         model2 = tc.object_detector.create(sf, max_iterations=1)
-        model2.export_coreml(filename2)
+        model2.export_coreml(filename2, 
+            include_non_maximum_suppression=False)
 
-    @unittest.skipIf(sys.platform != 'darwin', 'Only supported on Mac')
-    def test_no_gpu_mac_support(self):
+    @unittest.skipIf(_mac_ver() < (10, 14), 
+        "Non-maximum suppression is only supported on MacOS 10.14+.")
+    def test_export_coreml_with_non_maximum_suppression(self):
+        from PIL import Image
+        filename = tempfile.mkstemp('bingo.mlmodel')[1]
+        self.model.export_coreml(filename, include_non_maximum_suppression=True)
+
+        coreml_model = coremltools.models.MLModel(filename)
+        img = self.sf[0:1][self.feature][0]
+        img_fixed = tc.image_analysis.resize(img, 416, 416, 3)
+        pil_img = Image.fromarray(img_fixed.pixel_data)
+        if _mac_ver() >= (10, 13):
+            ret = coreml_model.predict({self.feature: pil_img}, 
+                usesCPUOnly = True)
+            self.assertEqual(ret['coordinates'].shape[1], 4)
+            self.assertEqual(ret['confidence'].shape[1], len(_CLASSES))
+            self.assertEqual(ret['coordinates'].shape[0], 
+                ret['confidence'].shape[0])
+            # A numeric comparison of the resulting of top bounding boxes is
+            # not that meaningful unless the model has converged
+
+        # Also check if we can train a second model and export it (there could
+        # be naming issues in mxnet)
+        filename2 = tempfile.mkstemp('bingo2.mlmodel')[1]
+        # We also test at the same time if we can export a model with a single
+        # class
+        sf = tc.SFrame({'image': [self.sf[self.feature][0]],
+                        'ann': [self.sf[self.annotations][0][:1]]})
+        model2 = tc.object_detector.create(sf, max_iterations=1)
+        model2.export_coreml(filename2, include_non_maximum_suppression=True)
+
+    @unittest.skipIf(sys.platform != 'darwin' or _mac_ver() >= (10, 14),
+        "GPU selection should fail on macOS 10.13 or below")
+    def test_no_gpu_support_on_unsupported_macos(self):
         num_gpus = tc.config.get_num_gpus()
         tc.config.set_num_gpus(1)
         with self.assertRaises(_ToolkitError):
-            tc.object_detector.create(self.sf)
+            tc.object_detector.create(self.sf, max_iterations=1)
         tc.config.set_num_gpus(num_gpus)
 
     def test__list_fields(self):
         model = self.model
         fields = model._list_fields()
-        self.assertEquals(set(fields), set(self.fields_ans))
+        self.assertEqual(set(fields), set(self.fields_ans))
 
     def test_get(self):
         model = self.model

@@ -20,7 +20,6 @@ if sys.version_info.major == 3:
     unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 import os as _os
-_lfs = _os.environ['LFS_ROOT']
 
 class CreateTest(unittest.TestCase):
     """
@@ -159,7 +158,7 @@ class CreateTest(unittest.TestCase):
                              verbose=False)
         self.assertItemsEqual(m.features, ['X1.0', 'X1.1'])
 
-        ## Features parameter should be overriden by the composite distance
+        ## Features parameter should be overridden by the composite distance
         #  argument.
         m = tc.dbscan.create(sf, features=['X1.0'], distance=test_dist,
                              radius=self.radius,

@@ -246,7 +246,7 @@ class BasicTest(unittest.TestCase):
             # topic_probs = m.get_topics(num_words=5)
             # expected = [w for w in topic_probs['word'][:5]]
             # observed = topic_words['words'][0]
-            # self.assertEquals(observed[0], expected[0])
+            # self.assertEqual(observed[0], expected[0])
 
     def test_get_vocabulary(self):
         """
@@ -464,8 +464,8 @@ class UtilitiesTest(unittest.TestCase):
 
     def setUp(self):
 
-        docs = turicreate.SArray([{'a': 3, 'b': 5},
-                                {'b': 5, 'c': 7},
+        docs = turicreate.SArray([{'b': 5, 'a': 3},
+                                {'c': 7, 'b': 5},
                                 {'a': 2, 'd': 3}])
 
         doc_topics = turicreate.SArray([[.9, .1],
@@ -504,4 +504,4 @@ class UtilitiesTest(unittest.TestCase):
                                    self.word_topics,
                                    self.vocabulary)
 
-        self.assertTrue(abs(perp - observed_perp) < .0001)
+        self.assertAlmostEqual(perp, observed_perp, delta=0.0001)

@@ -216,9 +216,8 @@ class Sketch(object):
       else:
           sorted_freq = sorted_freq[:10]
           sf = SFrame()
-          sf.add_column(SArray(['count']), 'value', inplace=True)
-          for elem in sorted_freq:
-              sf[elem[0]] = SArray([elem[1]])
+          sf['value'] = [elem[0] for elem in sorted_freq]
+          sf['count'] = [elem[1] for elem in sorted_freq]
           s += sf.__str__(footer=False) + "\n"
       s += "\n"
 
@@ -416,7 +415,7 @@ class Sketch(object):
         also appear in the result. The item counts are estimated using
         the CountSketch.
 
-        Missing values are not taken into account when copmuting frequent items.
+        Missing values are not taken into account when computing frequent items.
 
         If this function returns no elements, it means that all elements appear
         with less than 0.01% occurrence.
@@ -715,7 +714,7 @@ class Sketch(object):
          +-----+-----+-----+-----+-----+-----+-----+-----+------+}
         """
         single_val = False
-        if keys == None:
+        if keys is None:
             keys = []
         else:
             if not isinstance(keys, list):

@@ -6,7 +6,6 @@
 from __future__ import print_function as _
 from __future__ import division as _
 from __future__ import absolute_import as _
-import itertools
 import tempfile
 import unittest
 import copy
@@ -21,14 +20,12 @@ from turicreate.util import _assert_sframe_equal as assert_sframe_equal
 
 from turicreate.connect.main import get_unity
 from turicreate.toolkits._main import ToolkitError
-from turicreate.data_structures.sframe import SFrame
 
 import sys
 if sys.version_info.major == 3:
     unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 import os as _os
-_lfs = _os.environ['LFS_ROOT']
 
 
 ### Helper functions ###
@@ -280,7 +277,7 @@ class KmeansCreateTest(unittest.TestCase):
 
     def test_default_inputs(self):
         """
-        Test that model creation works corrqectly with only default inputs.
+        Test that model creation works correctly with only default inputs.
         """
         ## Need to specify at least a number of centers
         with self.assertRaises(ValueError):
@@ -394,7 +391,7 @@ class KmeansCreateTest(unittest.TestCase):
 
     def test_batch_size(self):
         """
-        Test that the batch size parameter is dealth with correctly, including
+        Test that the batch size parameter is dealt with correctly, including
         the choice of training method, re-sizing of 'batch_size', and existence
         of complete results.
         """

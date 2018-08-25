@@ -28,7 +28,6 @@ if sys.version_info.major > 2:
     long = int
 
 import os as _os
-_lfs = _os.environ['LFS_ROOT']
 
 
 class NearestNeighborsCreateTest(unittest.TestCase):
@@ -1588,7 +1587,7 @@ class NearestNeighborsSparseQueryTest(unittest.TestCase):
             elif distance == 'manhattan':
                 ans = manhattan(query, ref)
             else:
-                raise "Unknown distance"
+                raise RuntimeError("Unknown distance")
             self.assertAlmostEqual(score, ans)
 
     def test_query_distances(self):

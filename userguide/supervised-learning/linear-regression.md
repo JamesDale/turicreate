@@ -92,58 +92,7 @@ machines (SVM)** conform to **almost** all of the API discussed below.
 
 The attributes of all Turi Create models, which include training statistics, model
 hyper-parameters, and model results can be accessed in the same way as python
-dictionaries. To get a list of all fields that can be accessed, you can use the
-[list_fields()](https://apple.github.io/turicreate/docs/api/generated/turicreate.linear_regression.LinearRegression.list_fields.html)
-function:
-
-
-```python
-fields = model.list_fields()
-print fields
-```
-```python
-['auto_tuning',
- 'coefficients',
- 'convergence_threshold',
- 'feature_rescaling',
- 'features',
- 'l1_penalty',
- 'l2_penalty',
- 'lbfgs_memory_level',
- 'max_iterations',
- 'mini_batch_size',
- 'num_coefficients',
- 'num_examples',
- 'num_features',
- 'num_unpacked_features',
- 'solver',
- 'step_size',
- 'target',
- 'training_iterations',
- 'training_loss',
- 'training_rmse',
- 'training_solver_status',
- 'training_time',
- 'unpacked_features']
-```
-
-Each of these fields can be accessed using dictionary-like lookups. For
-example, the ``training_rmse`` measures the
-[root-mean-squared error](http://en.wikipedia.org/wiki/Root-mean-square_deviation) during
-training. It can be accessed as follows:
-
-```python
-print(model['training_rmse'])
-```
-```python
-0.971003765928
-```
-
-
-The
-[API docs](https://apple.github.io/turicreate/docs/api/generated/turicreate.linear_regression.LinearRegression.get.html)
-provide a detailed description of each of the model's
-atrributes.
+dictionaries.
 
 ###### <a name="linregr-interpreting-results"></a> Interpreting results
 
@@ -166,8 +115,8 @@ shows the largest positive and negative coefficients. After a model is
 created, we can access the coefficients as follows:
 
 ```python
-coefs = model['coefficients']
-print coefs
+coefs = model.coefficients
+print(coefs)
 ```
 ```no-highlight
 +-----------------------+-------+-------------------+-------------------+
@@ -197,7 +146,7 @@ coefficients estimated during model creation. Smaller standard errors implies
 more confidence in the value of the coefficients returned by th model.
 
 Standard errors on coefficients are only available when `solver=newton` or
-when the default `auto` solver option choses the newton method and if the
+when the default `auto` solver option chooses the newton method and if the
 number of examples in the training data is more than the number of
 coefficients. If standard errors cannot be estimated, a column of `None` values
 are returned.
@@ -225,9 +174,6 @@ category.  The number of these dummy coefficients is equal to the total number
 of categories minus 1 (for the reference category). The following figure
 illustrates how categorical variables are encoded using the **simple encoding**
 scheme.
-[This article](http://www.ats.ucla.edu/stat/sas/webbooks/reg/chapter5/sasreg5.htm)
-provides more details about simple encoding for regression models.
-
 
 [<img alt="Categorical variable summary" src="images/supervised-learning-categorical-variable-encoding.png" style="max-width: 70%; margin-left: 15%;" />](images/supervised-learning-categorical-variable-encoding.png)
 
@@ -253,16 +199,16 @@ model = tc.linear_regression.create(train_data, target='stars',
                                                 'city'])
 
 # Number of feature columns
-print "Number of features          : %s" % model['num_features']
+print("Number of features          : %s" % model['num_features'])
 
 # Number of features (including expanded lists and dictionaries)
-print "Number of unpacked features : %s" % model['num_unpacked_features']
+print("Number of unpacked features : %s" % model['num_unpacked_features'])
 
 # Number of coefficients in the model
-print "Number of coefficients      : %s" % model['num_coefficients']
+print("Number of coefficients      : %s" % model['num_coefficients'])
 
 # A coefficient is included for each category
-print model['coefficients']
+print(model['coefficients'])
 ```
 ```no-highlight
 Number of features          : 5
@@ -317,7 +263,9 @@ that all tags **not explicitly provided are treated as features with value
 zero**. We illustrate with the following example:
 
 ```python
-print train_data['categories_dict'].head(3)
+print(train_data['categories_dict'].head(3))
+```
+```no-highlight
 [{'Breakfast & Brunch': 1, 'Restaurants': 1},
  {'Restaurants': 1, 'Pizza': 1, 'Italian': 1},
  {'Dog Parks': 1, 'Parks': 1, 'Active Life': 1}]
@@ -340,16 +288,16 @@ model = tc.linear_regression.create(train_data, target='stars',
                                                 'categories_dict'])
 
 # Number of feature columns
-print "Number of features          : %s" % model['num_features']
+print("Number of features          : %s" % model['num_features'])
 
 # Number of features (including expanded lists and dictionaries)
-print "Number of unpacked features : %s" % model['num_unpacked_features']
+print("Number of unpacked features : %s" % model['num_unpacked_features'])
 
 # Number of coefficients in the model
-print "Number of coefficients      : %s" % model['num_coefficients']
+print("Number of coefficients      : %s" % model['num_coefficients'])
 
 # A coefficient is included for each key in the dictionary
-print model['coefficients']
+print(model['coefficients'])
 ```
 ```no-highlight
 Number of features          : 5
@@ -396,7 +344,9 @@ from array import array
 
 # List of features
 train_data['votes_list'] = train_data['votes'].apply(lambda x: x.values())
-print train_data['votes_list'].head(3)
+print(train_data['votes_list'].head(3))
+```
+```no-highlight
 [array('d', [0.0, 5.0, 2.0]),
  array('d', [0.0, 0.0, 0.0]),
  array('d', [0.0, 2.0, 1.0])]
@@ -417,16 +367,16 @@ model = tc.linear_regression.create(train_data, target='stars',
 
 
 # Number of feature columns
-print "Number of features          : %s" % model['num_features']
+print("Number of features          : %s" % model['num_features'])
 
 # Number of features (including expanded lists and dictionaries)
-print "Number of unpacked features : %s" % model['num_unpacked_features']
+print("Number of unpacked features : %s" % model['num_unpacked_features'])
 
 # Number of coefficients in the model
-print "Number of coefficients      : %s" % model['num_coefficients']
+print("Number of coefficients      : %s" % model['num_coefficients'])
 
 # A coefficient is included for each index in the list
-print model['coefficients']
+print(model['coefficients'])
 ```
 ```no-highlight
 Number of features          : 5
@@ -593,7 +543,7 @@ new_data = tc.SFrame({'user_avg_stars': [None],
                        'categories_dict': [{'Pizza': 1}]
                       })
 prediction = model.predict(new_data)
-print prediction
+print(prediction)
 
 # An SFrame without the 'user_avg_stars' feature. predict() will impute the
 # entire feature to the mean value observed during training.

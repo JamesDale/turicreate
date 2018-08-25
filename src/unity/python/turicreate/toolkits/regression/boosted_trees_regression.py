@@ -15,11 +15,9 @@ import turicreate.toolkits._supervised_learning as _sl
 import turicreate.toolkits._main as _toolkits_main
 from turicreate.toolkits._internal_utils import _toolkit_repr_print
 from turicreate.toolkits._internal_utils import _raise_error_evaluation_metric_is_valid
-from turicreate.toolkits._internal_utils import _raise_error_if_column_exists
 
 from turicreate.toolkits._tree_model_mixin import TreeModelMixin as _TreeModelMixin
 
-from turicreate.toolkits._internal_utils import _raise_error_if_not_sframe
 from turicreate.toolkits._internal_utils import _map_unity_proxy_to_object
 from turicreate.util import _make_internal_url
 
@@ -44,7 +42,7 @@ class BoostedTreesRegression(_SupervisedLearningModel, _TreeModelMixin):
     the gradient boost trees model is able to model non-linear interactions
     between the features and the target using decision trees as the subroutine.
     It is good for handling numerical features and categorical features with
-    tens of categories but is less suitable for highly sparse feautres such as
+    tens of categories but is less suitable for highly sparse features such as
     text data.
 
     This model cannot be constructed directly.  Instead, use
@@ -105,9 +103,9 @@ class BoostedTreesRegression(_SupervisedLearningModel, _TreeModelMixin):
         +-------------------------+--------------------------------------------------------------------------------+
         | max_iterations          | Number of iterations, equals to the number of trees                            |
         +-------------------------+--------------------------------------------------------------------------------+
-        | min_child_weight        | Minimun weight required on the leave nodes                                     |
+        | min_child_weight        | Minimum weight required on the leave nodes                                     |
         +-------------------------+--------------------------------------------------------------------------------+
-        | min_loss_reduction      | Minimun loss reduction required for splitting a node                           |
+        | min_loss_reduction      | Minimum loss reduction required for splitting a node                           |
         +-------------------------+--------------------------------------------------------------------------------+
         | num_features            | Number of features in the model                                                |
         +-------------------------+--------------------------------------------------------------------------------+
@@ -129,7 +127,7 @@ class BoostedTreesRegression(_SupervisedLearningModel, _TreeModelMixin):
         +-------------------------+--------------------------------------------------------------------------------+
         | trees_json              | Tree encoded using JSON                                                        |
         +-------------------------+--------------------------------------------------------------------------------+
-        | valiation_error         | Error on validation data                                                       |
+        | validation_error        | Error on validation data                                                       |
         +-------------------------+--------------------------------------------------------------------------------+
         | unpacked_features       | Feature names (including expanded list/dict features)                          |
         +-------------------------+--------------------------------------------------------------------------------+
@@ -222,7 +220,11 @@ class BoostedTreesRegression(_SupervisedLearningModel, _TreeModelMixin):
                    "model_type" : "boosted_trees",
                    "version": _turicreate.__version__,
                    "class": self.__class__.__name__,
-                   "short_description": short_description}
+                   "short_description": short_description,
+                   'user_defined':{
+                    'turicreate_version': _turicreate.__version__
+                   }
+                }
         self._export_coreml_impl(filename, context)
 
     def predict(self, dataset, missing_value_action='auto'):
@@ -357,7 +359,7 @@ def create(dataset, target,
 
     random_seed: int, optional
         Seeds random operations such as column and row subsampling, such that
-        results are reproduceable.
+        results are reproducible.
 
     metric : str or list[str], optional
         Performance metric(s) that are tracked during training. When specified,

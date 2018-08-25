@@ -6,13 +6,16 @@
 from __future__ import print_function as _
 from __future__ import division as _
 from __future__ import absolute_import as _
+
+import turicreate as _tc
 from turicreate.data_structures.sgraph import SGraph as _SGraph
 import turicreate.toolkits._main as _main
 from turicreate.toolkits.graph_analytics._model_base import GraphAnalyticsModel as _ModelBase
+from turicreate.cython.cy_server import QuietProgress
 
 class TriangleCountingModel(_ModelBase):
     """
-    Model object containing the traingle count for each vertex, and the total
+    Model object containing the triangle count for each vertex, and the total
     number of triangles. The model ignores the edge directions in that
     it assumes there are no multiple edges between
     the same source ang target pair and ignores bidirectional edges.
@@ -99,10 +102,10 @@ def create(graph, verbose=True):
     Examples
     --------
     If given an :class:`~turicreate.SGraph` ``g``, we can create a
-    :class:`~turicreate.traingle_counting.TriangleCountingModel` as follows:
+    :class:`~turicreate.triangle_counting.TriangleCountingModel` as follows:
 
     >>> g =
-    >>> turicreate.load_graph('http://snap.stanford.edu/data/email-Enron.txt.gz',
+    >>> turicreate.load_sgraph('http://snap.stanford.edu/data/email-Enron.txt.gz',
             >>> format='snap') tc = turicreate.triangle_counting.create(g)
 
     We can obtain the number of triangles that each vertex in the graph ``g``
@@ -124,5 +127,7 @@ def create(graph, verbose=True):
     if not isinstance(graph, _SGraph):
         raise TypeError('graph input must be a SGraph object.')
 
-    params = _main.run('triangle_counting', {'graph': graph.__proxy__}, verbose)
+    with QuietProgress(verbose):
+        params = _tc.extensions._toolkits.graph.triangle_counting.create(
+            {'graph': graph.__proxy__})
     return TriangleCountingModel(params['model'])

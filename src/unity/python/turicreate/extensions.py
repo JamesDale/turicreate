@@ -21,6 +21,7 @@ from __future__ import absolute_import as _
 # This is a fake meta namespace which contains toolkit functions and toolkit
 # models implemented as extensions in C++
 
+import sys as _sys
 from . import SArray as _SArray, SFrame as _SFrame, SGraph as _SGraph
 from .connect.main import get_unity as _get_unity
 from .util import _make_internal_url
@@ -32,6 +33,11 @@ from .toolkits._main import ToolkitError as _ToolkitError
 from .cython.context import debug_trace as cython_context
 from sys import version_info as _version_info
 import types as _types
+if _sys.version_info.major == 2:
+    from types import ClassType as _ClassType
+    _class_type = _ClassType
+else:
+    _class_type = type
 
 
 # Now. a bit of magic hackery is going to happen to this module.
@@ -70,14 +76,13 @@ import types as _types
 # module, breaking the recursive relation. And the tc.extensions wrapper will
 # have all the stuff in it for tab completion by IPython.
 
-import sys as _sys
 _thismodule = _sys.modules[__name__]
 class_uid_to_class = {}
 
 def _wrap_function_return(val):
     """
     Recursively walks each thing in val, opening lists and dictionaries,
-    converting all occurances of UnityGraphProxy to an SGraph,
+    converting all occurrences of UnityGraphProxy to an SGraph,
     UnitySFrameProxy to SFrame, and UnitySArrayProxy to SArray.
     """
 
@@ -89,14 +94,11 @@ def _wrap_function_return(val):
         return _SArray(_proxy = val)
     elif type(val) is _UnityModel:
         # we need to cast it up to the appropriate type
-        try:
-            if '__uid__' in val.list_fields():
-                uid = val.get('__uid__')
-                if uid in class_uid_to_class:
-                    return class_uid_to_class[uid](_proxy=val)
-        except:
-            pass
-        return val
+        uid = val.get_uid()
+        if uid in class_uid_to_class:
+            return class_uid_to_class[uid](_proxy=val)
+        else:
+            return val
     elif type(val) is list:
         return [_wrap_function_return(i) for i in val]
     elif type(val) is dict:
@@ -152,7 +154,7 @@ def _run_toolkit_function(fnname, arguments, args, kwargs):
     with cython_context():
         ret = _get_unity().run_toolkit(fnname, argument_dict)
     # handle errors
-    if ret[0] != True:
+    if not ret[0]:
         if len(ret[1]) > 0:
             raise _ToolkitError(ret[1])
         else:
@@ -192,9 +194,8 @@ def _create_class_instance(class_name, _proxy):
     Look for the class in .extensions in case it has already been
     imported (perhaps as a builtin extensions hard compiled into unity_server).
     """
-    root_package_name = __import__(__name__.split('.')[0]).__name__
     try:
-        return _class_instance_from_name(root_package_name + ".extensions." + class_name, _proxy=_proxy)
+        return _class_instance_from_name('turicreate.extensions.' + class_name, _proxy=_proxy)
     except:
         pass
     return _class_instance_from_name(class_name, _proxy=_proxy)
@@ -228,9 +229,9 @@ class _ToolkitClass:
             self.__dict__['_tkclass'] = _get_unity().create_toolkit_class(tkclass_name)
         try:
             # fill the functions and properties
-            self.__dict__['_functions'] = self._tkclass.get('list_functions')
-            self.__dict__['_get_properties'] = self._tkclass.get('list_get_properties')
-            self.__dict__['_set_properties'] = self._tkclass.get('list_set_properties')
+            self.__dict__['_functions'] = self._tkclass.list_functions()
+            self.__dict__['_get_properties'] = self._tkclass.list_get_properties()
+            self.__dict__['_set_properties'] = self._tkclass.list_set_properties()
             # rewrite the doc string for this class
             try:
                 self.__dict__['__doc__'] = self._tkclass.get('get_docstring', {'__symbol__':'__doc__'})
@@ -271,8 +272,11 @@ class _ToolkitClass:
                 raise TypeError("Got multiple values for keyword argument '" + k + "'")
             argument_dict[k] = kwargs[k]
         # unwrap it
-        argument_dict['__function_name__'] = fnname
-        ret = self._tkclass.get('call_function', argument_dict)
+        try:
+            ret = self._tkclass.call_function(fnname, argument_dict)
+        except RuntimeError as exc:
+            # Expose C++ exceptions using ToolkitError.
+            raise _ToolkitError(exc)
         ret = _wrap_function_return(ret)
         return ret
 
@@ -282,14 +286,13 @@ class _ToolkitClass:
             return self.__dict__['__proxy__']
         elif name in self._get_properties:
             # is it an attribute?
-            arguments = {'__property_name__':name}
-            return _wrap_function_return(self._tkclass.get('get_property', arguments))
+            return _wrap_function_return(self._tkclass.get_property(name))
         elif name in self._functions:
             # is it a function?
             ret = lambda *args, **kwargs: self.__run_class_function(name, args, kwargs)
             ret.__doc__ = "Name: " + name + "\nParameters: " + str(self._functions[name]) + "\n"
             try:
-                ret.__doc__ += self._tkclass.get('get_docstring', {'__symbol__':name})
+                ret.__doc__ += self._tkclass.get_docstring(name)
                 ret.__doc__ += '\n'
             except:
                 pass
@@ -303,8 +306,8 @@ class _ToolkitClass:
             self.__dict__['__proxy__'] = value
         elif name in self._set_properties:
             # is it a setable property?
-            arguments = {'__property_name__':name, 'value':value}
-            return _wrap_function_return(self._tkclass.get('set_property', arguments))
+            arguments = {'value':value}
+            return _wrap_function_return(self._tkclass.set_property(name, arguments))
         else:
             raise AttributeError("no attribute " + name)
 
@@ -380,7 +383,7 @@ def _publish():
         # default construct correctly
         new_class['__init__'].tkclass_name = tkclass
 
-        newclass = _types.ClassType(tkclass, (), new_class)
+        newclass = _class_type(tkclass, (), new_class)
         setattr(newclass, '__glmeta__', {'extension_name':tkclass})
         class_uid_to_class[m['uid']] = newclass
         modpath = tkclass.split('.')
@@ -492,7 +495,7 @@ def _add_meta_path():
     """
     import sys
     global _ext_meta_path_singleton
-    if _ext_meta_path_singleton == None:
+    if _ext_meta_path_singleton is None:
         _ext_meta_path_singleton = _ExtMetaPath()
         sys.meta_path += [_ext_meta_path_singleton]
 
@@ -580,7 +583,6 @@ def ext_import(soname, module_subpath=""):
         raise RuntimeError(ret)
     _publish()
     # push the functions into the corresponding module namespace
-    filename = os.path.basename(soname)
     return unity.list_toolkit_functions_in_dynamic_module(soname) + unity.list_toolkit_classes_in_dynamic_module(soname)
 
 

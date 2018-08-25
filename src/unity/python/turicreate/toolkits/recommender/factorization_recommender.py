@@ -13,6 +13,7 @@ from __future__ import absolute_import as _
 from turicreate.toolkits._model import _get_default_options_wrapper
 import turicreate as _turicreate
 from turicreate.toolkits.recommender.util import _Recommender
+from turicreate.cython.cy_server import QuietProgress
 
 def create(observation_data,
            user_id='user_id', item_id='item_id', target=None,
@@ -154,7 +155,7 @@ def create(observation_data,
     >>> user_info = turicreate.SFrame({'user_id': ["0", "1", "2"],
     ...                              'name': ["Alice", "Bob", "Charlie"],
     ...                              'numeric_feature': [0.1, 12, 22]})
-    >>> item_info = turicreate.SFrame({'item_id': ["a", "b", "c", d"],
+    >>> item_info = turicreate.SFrame({'item_id': ["a", "b", "c", "d"],
     ...                              'name': ["item1", "item2", "item3", "item4"],
     ...                              'dict_feature': [{'a' : 23}, {'a' : 13},
     ...                                               {'b' : 1},
@@ -188,7 +189,7 @@ def create(observation_data,
     method = 'factorization_recommender'
 
     opts = {'model_name': method}
-    response = _turicreate.toolkits._main.run("recsys_init", opts)
+    response = _turicreate.extensions._recsys.init(opts)
     model_proxy = response['model']
 
     if user_data is None:
@@ -231,7 +232,8 @@ def create(observation_data,
 
         opts.update(kwargs)
 
-    response = _turicreate.toolkits._main.run('recsys_train', opts, verbose)
+    with QuietProgress(verbose):
+        response = _turicreate.extensions._recsys.train(opts)
 
     return FactorizationRecommender(response['model'])
 

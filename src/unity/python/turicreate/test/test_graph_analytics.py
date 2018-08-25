@@ -28,7 +28,7 @@ class GraphAnalyticsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         url = dataset_server + "p2p-Gnutella04.txt.gz"
-        cls.graph = tc.load_graph(url, format='snap')
+        cls.graph = tc.load_sgraph(url, format='snap')
 
     def __test_model_save_load_helper__(self, model):
         with util.TempDirectory() as f:
@@ -127,7 +127,7 @@ class GraphAnalyticsTest(unittest.TestCase):
             g = g.add_vertices(tc.SFrame({'__id': [-1]}))
             m = tc.label_propagation.create(g, label_field='label', threshold=1e-10, max_iterations=max_iter)
             result = m.graph.vertices
-            self.assertEquals(result[result['__id'] == -1]['predicted_label'][0], None)
+            self.assertEqual(result[result['__id'] == -1]['predicted_label'][0], None)
 
     def test_pagerank(self):
         if "pagerank" in get_unity().list_toolkit_functions():
@@ -146,6 +146,11 @@ class GraphAnalyticsTest(unittest.TestCase):
             self.assertAlmostEqual(m2.pagerank['pagerank'].sum(), 7087.08, delta=1e-2)
             with self.assertRaises(Exception):
                 assert_frame_equal(m.pagerank.topk('pagerank'), m2.pagerank.topk('pagerank'))
+
+            pr_out = m2['pagerank']
+            with self.assertRaises(Exception):
+                assert_frame_equal(m.pagerank.topk('pagerank'), pr_out.topk('pagerank'))
+            
             self.__test_model_save_load_helper__(m2)
 
     def test_triangle_counting(self):
@@ -224,10 +229,11 @@ class GraphAnalyticsTest(unittest.TestCase):
             edge_dst_ids = [   'a',    'b', 'dst', 'c', 'dst']
             edges = tc.SFrame({'__src_id': edge_src_ids, '__dst_id': edge_dst_ids})
             g=tc.SGraph().add_edges(edges)
-            res = list(tc.shortest_path._compute_shortest_path(g, ["src1","src2"], "dst"))
-            self.assertEquals(res, [["src1", "a", "dst"]])
-            res = list(tc.shortest_path._compute_shortest_path(g, "src2", "dst"))
-            self.assertEquals(res, [["src2", "b", "c", "dst"]])
+            res = tc.shortest_path._compute_shortest_path(
+                g, ["src1","src2"], "dst")
+            self.assertEqual(res, [["src1", "a", "dst"]])
+            res = tc.shortest_path._compute_shortest_path(g, "src2", "dst")
+            self.assertEqual(res, [["src2", "b", "c", "dst"]])
 
             edge_src_ids = [0,1,2,3,4]
             edge_dst_ids = [2,3,5,4,5]
@@ -235,4 +241,4 @@ class GraphAnalyticsTest(unittest.TestCase):
             g=tc.SFrame({'__src_id':edge_src_ids,'__dst_id':edge_dst_ids, 'weights':edge_weights})
             g=tc.SGraph(edges=g)
             t=tc.shortest_path._compute_shortest_path(g,[0,1],[5],"weights")
-            self.assertEquals(t.astype(list)[0], [1,3,4,5])
+            self.assertEqual(t, [[1,3,4,5]])

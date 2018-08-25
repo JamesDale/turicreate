@@ -42,12 +42,6 @@ class FeatureEngineeringTest(unittest.TestCase):
         self.sframe_comparer = util.SFrameComparer()
 
     def test_count_ngrams(self):
-        """
-        Check correctness of the `text_analytics.count_ngrams` function. This
-        code copies the same test in test_sarray.py, but that test will be
-        removed when the SArray version of count_ngrams is removed in GLC
-        version 1.7.
-        """
         # Testing word n-gram functionality
         result = tc.text_analytics.count_ngrams(self.sa_word, 3)
         result2 = tc.text_analytics.count_ngrams(self.sa_word, 2)
@@ -58,13 +52,13 @@ class FeatureEngineeringTest(unittest.TestCase):
         expected3 = [{'I like big': 1, 'fun I LIKE': 1, 'I LIKE BIG': 1, 'LIKE BIG DOGS': 1, 'They are fun': 1, 'big dogs They': 1, 'like big dogs': 1, 'are fun I': 1, 'dogs They are': 1}, {}, {'I like big': 1}]
         expected4 = [{'I like': 1, 'like big': 1, 'I LIKE': 1, 'BIG DOGS': 1, 'are fun': 1, 'LIKE BIG': 1, 'big dogs': 1, 'They are': 1, 'dogs They': 1, 'fun I': 1}, {'I like': 1}, {'I like': 1, 'like big': 1}]
 
-        self.assertEquals(result.dtype, dict)
+        self.assertEqual(result.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result, expected)
-        self.assertEquals(result2.dtype, dict)
+        self.assertEqual(result2.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result2, expected2)
-        self.assertEquals(result3.dtype, dict)
+        self.assertEqual(result3.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result3, expected3)
-        self.assertEquals(result4.dtype, dict)
+        self.assertEqual(result4.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result4, expected4)
 
 
@@ -94,29 +88,29 @@ class FeatureEngineeringTest(unittest.TestCase):
         expected15 = [{'s.f': 1, 'n.i': 1, 'Fun': 1, '.fu': 1, 'is.': 1, 'fun': 1, '.is': 1, 'un.': 1}, {'sfu': 1, 'Fun': 1, 'uni': 1, 'fun': 1, 'nis': 1, 'isf': 1, 'un.': 1}, {}, {'fun': 1}]
         expected16 = [{'.i': 1, 'fu': 1, 'n.': 1, 'is': 1, '.f': 1, 'un': 2, 's.': 1, 'Fu': 1}, {'ni': 1, 'fu': 1, 'n.': 1, 'is': 1, 'un': 2, 'sf': 1, 'Fu': 1}, {'fu': 1}, {'un': 1, 'fu': 1}]
 
-        self.assertEquals(result5.dtype, dict)
+        self.assertEqual(result5.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result5, expected5)
-        self.assertEquals(result6.dtype, dict)
+        self.assertEqual(result6.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result6, expected6)
-        self.assertEquals(result7.dtype, dict)
+        self.assertEqual(result7.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result7, expected7)
-        self.assertEquals(result8.dtype, dict)
+        self.assertEqual(result8.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result8, expected8)
-        self.assertEquals(result9.dtype, dict)
+        self.assertEqual(result9.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result9, expected9)
-        self.assertEquals(result10.dtype, dict)
+        self.assertEqual(result10.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result10, expected10)
-        self.assertEquals(result11.dtype, dict)
+        self.assertEqual(result11.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result11, expected11)
-        self.assertEquals(result12.dtype, dict)
+        self.assertEqual(result12.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result12, expected12)
-        self.assertEquals(result13.dtype, dict)
+        self.assertEqual(result13.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result13, expected13)
-        self.assertEquals(result14.dtype, dict)
+        self.assertEqual(result14.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result14, expected14)
-        self.assertEquals(result15.dtype, dict)
+        self.assertEqual(result15.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result15, expected15)
-        self.assertEquals(result16.dtype, dict)
+        self.assertEqual(result16.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result16, expected16)
 
 
@@ -140,87 +134,75 @@ class FeatureEngineeringTest(unittest.TestCase):
             assert len(context) == 1
             
 
-    def test_trim_rare_words(self):
-        """
-        Check correctness of the `text_analytics.trim_rare_words` function. This
-        code copies the same test in test_sarray.py, but that test will be
-        removed when the SArray version of count_ngrams is removed in GLC
-        version 1.7.
-        """
-
+    def test_drop_words(self):
         ## Bogus input type
         sa = tc.SArray([1, 2, 3])
         with self.assertRaises(RuntimeError):
-            tc.text_analytics.trim_rare_words(sa)
+            tc.text_analytics.drop_words(sa)
 
 
         ## Other languages
-        expected = ["this is someurl http://someurl!! this is someurl http://someurl!!",
+        expected = ["this is someurl http someurl this is someurl http someurl",
                                     "中文 应该也 行 中文 应该也 行",
                                     "Сблъсъкът между Сблъсъкът между"]
 
-        expected2 = ["This is someurl http://someurl!! This is someurl http://someurl!!",
+        expected2 = ["This is someurl http someurl This is someurl http someurl",
                                     "中文 应该也 行 中文 应该也 行",
                                     "Сблъсъкът между Сблъсъкът между"]
 
 
-        result = tc.text_analytics.trim_rare_words(self.languages_double)
-        self.assertEquals(result.dtype, str)
+        result = tc.text_analytics.drop_words(self.languages_double)
+        self.assertEqual(result.dtype, str)
         self.sframe_comparer._assert_sarray_equal(result, expected)
 
-        result = tc.text_analytics.trim_rare_words(self.languages_double, to_lower=False)
-        self.assertEquals(result.dtype, str)
+        result = tc.text_analytics.drop_words(self.languages_double, to_lower=False)
+        self.assertEqual(result.dtype, str)
         self.sframe_comparer._assert_sarray_equal(result, expected2)
 
 
         ## Check that delimiters work properly by default and when modified.
-        expected1 = ['this is some url http://www.someurl.com!! this is some url http://www.someurl.com!!', 'should we? yes, we should. should we? yes, we should.']
+        expected1 = ['this is some url http www someurl com this is some url http www someurl com', 'should we yes we should should we yes we should']
         expected2 = ['this is some url http://www.someurl.com this is some url http://www.someurl.com', 'should we yes we should. should we yes we should.']
+        expected3 = ['url http www someurl url http www someurl', '']
 
-        word_counts1 = tc.text_analytics.trim_rare_words(self.punctuated_double)
-        word_counts2 = tc.text_analytics.trim_rare_words(self.punctuated_double,
+        word_counts1 = tc.text_analytics.drop_words(self.punctuated_double)
+        word_counts2 = tc.text_analytics.drop_words(self.punctuated_double,
                                                      delimiters=["?", "!", ","," "])
+        word_counts3 = tc.text_analytics.drop_words(self.punctuated_double, stop_words=tc.text_analytics.stop_words())
 
-        self.assertEquals(word_counts1.dtype, str)
+        self.assertEqual(word_counts1.dtype, str)
         self.sframe_comparer._assert_sarray_equal(word_counts1, expected1)
-        self.assertEquals(word_counts2.dtype, str)
+        self.assertEqual(word_counts2.dtype, str)
         self.sframe_comparer._assert_sarray_equal(word_counts2, expected2)
+        self.assertEqual(word_counts3.dtype, str)
+        self.sframe_comparer._assert_sarray_equal(word_counts3, expected3)
 
 
     def test_count_words(self):
-        """
-        Check correctness of the `text_analytics.count_words` function. This
-        code copies the same test in test_sarray.py, but that test will be
-        removed when the SArray version of count_ngrams is removed in GLC
-        version 1.7.
-        """
-
         ## Bogus input type
         sa = tc.SArray([1, 2, 3])
         with self.assertRaises(RuntimeError):
             tc.text_analytics.count_words(sa)
 
-
         ## Other languages
-        expected = [{"this": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+        expected = [{"this": 1, "http": 1, "someurl": 2, "is": 1},
                     {"中文": 1, "应该也": 1, "行": 1},
                     {"Сблъсъкът": 1, "между": 1}]
-        expected2 = [{"This": 1, "http://someurl!!": 1, "someurl": 1, "is": 1},
+        expected2 = [{"This": 1, "http": 1, "someurl": 2, "is": 1},
                      {"中文": 1, "应该也": 1, "行": 1},
                      {"Сблъсъкът": 1, "между": 1}]
 
         result = tc.text_analytics.count_words(self.languages)
-        self.assertEquals(result.dtype, dict)
+        self.assertEqual(result.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result, expected)
 
         result = tc.text_analytics.count_words(self.languages, to_lower=False)
-        self.assertEquals(result.dtype, dict)
+        self.assertEqual(result.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(result, expected2)
 
-
         ## Check that delimiters work properly by default and when modified.
-        expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http://www.someurl.com!!": 1},
-                     {"should": 1, "we?": 1, "we": 1, "yes,": 1, "should.": 1}]
+        expected1 = [{"this": 1, "is": 1, "some": 1, "url": 1, "http": 1, "www": 1, "someurl": 1, "com": 1},
+                     {"should": 2, "we": 2, "yes": 1}]
         expected2 = [{"this is some url http://www.someurl.com": 1},
                      {"should we": 1, " yes": 1, " we should.": 1}]
 
@@ -228,18 +210,19 @@ class FeatureEngineeringTest(unittest.TestCase):
         word_counts2 = tc.text_analytics.count_words(self.punctuated,
                                                      delimiters=["?", "!", ","])
 
-        self.assertEquals(word_counts1.dtype, dict)
+        self.assertEqual(word_counts1.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(word_counts1, expected1)
-        self.assertEquals(word_counts2.dtype, dict)
+        self.assertEqual(word_counts2.dtype, dict)
         self.sframe_comparer._assert_sarray_equal(word_counts2, expected2)
 
-    def test_stopwords(self):
+    def test_stop_words(self):
         """
-        Check that the stopwords can be accessed properly as part of the text
+        Check that the stop words can be accessed properly as part of the text
         analytics toolkit.
         """
-        words = tc.text_analytics.stopwords()
-        assert len(words) > 400
+        words = tc.text_analytics.stop_words()
+        self.assertTrue(len(words) > 400)
+        self.assertTrue('a' in words)
 
     def test_tf_idf(self):
         """
@@ -252,7 +235,7 @@ class FeatureEngineeringTest(unittest.TestCase):
         self.assertAlmostEqual(tfidf_docs[0]['is'], 1 * math.log(1))
 
         empty_sa = tc.text_analytics.tf_idf(tc.SArray())
-        self.assertEquals(len(empty_sa), 0)
+        self.assertEqual(len(empty_sa), 0)
 
         empty_dict_sf = tc.text_analytics.tf_idf(tc.SArray([{}]))
         assert len(empty_dict_sf) == 1

@@ -23,7 +23,7 @@ import pandas
 from ..connect import main as glconnect
 from .. import _sys_util
 from .. import util
-from .. import SGraph, Model, SFrame, load_graph, load_model, load_sframe
+from .. import SGraph, Model, SFrame, load_sgraph, load_model, load_sframe
 from pandas.util.testing import assert_frame_equal
 
 restricted_place = '/root'
@@ -57,7 +57,7 @@ def _test_save_load_object_helper(testcase, obj, path):
                 
     if isinstance(obj, SGraph):
         obj.save(path + ".graph")
-        newobj = load_graph(path + ".graph")
+        newobj = load_sgraph(path + ".graph")
         assert_same_elements(obj.get_fields(), newobj.get_fields())
         testcase.assertDictEqual(obj.summary(), newobj.summary())
     elif isinstance(obj, Model):
@@ -102,7 +102,7 @@ class LocalFSConnectorTests(unittest.TestCase):
         url = util._make_internal_url(url)
         glconnect.get_unity().__write__(url, content)
         content_read = glconnect.get_unity().__read__(url)
-        self.assertEquals(content_read, content)
+        self.assertEqual(content_read, content)
         if os.path.exists(url):
             os.remove(url)
 
@@ -127,7 +127,7 @@ class HttpConnectorTests(unittest.TestCase):
     def _test_read_helper(self, url, content_expected):
         url = util._make_internal_url(url)
         content_read = glconnect.get_unity().__read__(url)
-        self.assertEquals(content_read, content_expected)
+        self.assertEqual(content_read, content_expected)
 
     def test_read(self):
         expected = "\n".join([str(unichr(i + ord('a'))) for i in range(26)])
@@ -140,7 +140,7 @@ class HttpConnectorTests(unittest.TestCase):
 
 @unittest.skip("Disabling HDFS Connector Tests")
 class HDFSConnectorTests(unittest.TestCase):
-    # This test requires hadoop to be installed and avaiable in $PATH.
+    # This test requires hadoop to be installed and available in $PATH.
     # If not, the tests will be skipped.
     @classmethod
     def setUpClass(self):
@@ -152,7 +152,7 @@ class HDFSConnectorTests(unittest.TestCase):
         url = util._make_internal_url(url)
         glconnect.get_unity().__write__(url, content_expected)
         content_read = glconnect.get_unity().__read__(url)
-        self.assertEquals(content_read, content_expected)
+        self.assertEqual(content_read, content_expected)
         # clean up the file we wrote
         status, output = commands.getstatusoutput('hadoop fs -test -e ' + url)
         if status is 0:
@@ -162,14 +162,14 @@ class HDFSConnectorTests(unittest.TestCase):
         if self.has_hdfs:
             self._test_read_write_helper("hdfs://" + self.tempfile, 'hello,world,woof')
         else:
-            logging.getLogger(__name__).info("No hdfs avaiable. Test pass.")
+            logging.getLogger(__name__).info("No hdfs available. Test pass.")
 
     def test_gzip(self):
         if self.has_hdfs:
             self._test_read_write_helper("hdfs://" + self.tempfile + ".gz", 'hello,world,woof')
             self._test_read_write_helper("hdfs://" + self.tempfile + ".csv.gz", 'hello,world,woof')
         else:
-            logging.getLogger(__name__).info("No hdfs avaiable. Test pass.")
+            logging.getLogger(__name__).info("No hdfs available. Test pass.")
 
     def test_object_save_load(self):
         if self.has_hdfs:
@@ -177,7 +177,7 @@ class HDFSConnectorTests(unittest.TestCase):
             _test_save_load_object_helper(self, self.graph, prefix + self.tempfile)
             _test_save_load_object_helper(self, self.sframe, prefix + self.tempfile)
         else:
-            logging.getLogger(__name__).info("No hdfs avaiable. Test pass.")
+            logging.getLogger(__name__).info("No hdfs available. Test pass.")
 
     def test_exception(self):
         bad_url = "hdfs:///root/"
@@ -188,11 +188,11 @@ class HDFSConnectorTests(unittest.TestCase):
             self.assertRaises(IOError, lambda: glconnect.get_unity().__write__(bad_url + "/tmp", "somerandomcontent"))
             self.assertRaises(IOError, lambda: self.graph.save(bad_url + "x.graph"))
             self.assertRaises(IOError, lambda: self.sframe.save(bad_url + "x.frame_idx"))
-            self.assertRaises(IOError, lambda: load_graph(bad_url + "mygraph"))
+            self.assertRaises(IOError, lambda: load_sgraph(bad_url + "mygraph"))
             self.assertRaises(IOError, lambda: load_sframe(bad_url + "x.frame_idx"))
             self.assertRaises(IOError, lambda: load_model(bad_url + "x.model"))
         else:
-            logging.getLogger(__name__).info("No hdfs avaiable. Test pass.")
+            logging.getLogger(__name__).info("No hdfs available. Test pass.")
 
 
 @unittest.skip("Disabling S3 Connector Tests")
@@ -224,7 +224,7 @@ class S3ConnectorTests(unittest.TestCase):
         s3url = util._make_internal_url(url)
         glconnect.get_unity().__write__(s3url, content_expected)
         content_read = glconnect.get_unity().__read__(s3url)
-        self.assertEquals(content_read, content_expected)
+        self.assertEqual(content_read, content_expected)
         (status, output) = commands.getstatusoutput('aws s3 rm --region us-west-2 ' + url)
         if status is not 0:
             logging.getLogger(__name__).warning("Cannot remove file: " + url)
@@ -234,13 +234,13 @@ class S3ConnectorTests(unittest.TestCase):
             for bucket in [self.standard_bucket, self.regional_bucket]:
                 self._test_read_write_helper("s3://" + bucket + self.tempfile, 'hello,world,woof')
         else:
-            logging.getLogger(__name__).info("No s3 bucket avaiable. Test pass.")
+            logging.getLogger(__name__).info("No s3 bucket available. Test pass.")
 
     def test_gzip(self):
         if self.has_s3:
             self._test_read_write_helper("s3://" + self.standard_bucket + self.tempfile + ".gz", 'hello,world,woof')
         else:
-            logging.getLogger(__name__).info("No s3 bucket avaiable. Test pass.")
+            logging.getLogger(__name__).info("No s3 bucket available. Test pass.")
 
     def test_object_save_load(self):
         if self.has_s3:
@@ -248,7 +248,7 @@ class S3ConnectorTests(unittest.TestCase):
             _test_save_load_object_helper(self, self.graph, prefix + self.tempfile)
             _test_save_load_object_helper(self, self.sframe, prefix + self.tempfile)
         else:
-            logging.getLogger(__name__).info("No s3 bucket avaiable. Test pass.")
+            logging.getLogger(__name__).info("No s3 bucket available. Test pass.")
 
     def test_exception(self):
         if self.has_s3:
@@ -261,8 +261,8 @@ class S3ConnectorTests(unittest.TestCase):
             self.assertRaises(IOError, lambda: glconnect.get_unity().__write__("s3://" + self.standard_bucket + "I'amABadUrl/", "somerandomcontent"))
             self.assertRaises(IOError, lambda: self.graph.save(prefix + "/x.graph"))
             self.assertRaises(IOError, lambda: self.sframe.save(prefix + "/x.frame_idx"))
-            self.assertRaises(IOError, lambda: load_graph(prefix + "/x.graph"))
+            self.assertRaises(IOError, lambda: load_sgraph(prefix + "/x.graph"))
             self.assertRaises(IOError, lambda: load_sframe(prefix + "/x.frame_idx"))
             self.assertRaises(IOError, lambda: load_model(prefix + "/x.model"))
         else:
-            logging.getLogger(__name__).info("No s3 bucket avaiable. Test pass.")
+            logging.getLogger(__name__).info("No s3 bucket available. Test pass.")

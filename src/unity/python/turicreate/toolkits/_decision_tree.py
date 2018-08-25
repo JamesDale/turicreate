@@ -185,16 +185,14 @@ class DecisionTree:
     @classmethod
     def from_model(cls, model, tree_id = 0):
         import turicreate as _tc
-        from turicreate.toolkits import _supervised_learning as _sl
         import json as _json
 
         _raise_error_if_not_of_type(tree_id, [int,long], "tree_id")
         _numeric_param_check_range("tree_id", tree_id, 0, model.num_trees - 1)
 
         tree = DecisionTree()
-        nodes = {}
         tree_str = _tc.extensions._xgboost_get_tree(model.__proxy__, tree_id)
-        metadata_mapping = _tc.extensions._get_metadata_mapping(model.__proxy__)
+        metadata_mapping = _tc.extensions._supervised_learning._get_metadata_mapping(model.__proxy__)
         trees_json = _json.loads(tree_str)
 
         # Parse the tree from the JSON.
@@ -295,7 +293,7 @@ class DecisionTree:
 
         # Set the root_id.
         for nid, n in self.nodes.items():
-            if n.parent == None:
+            if n.parent is None:
                 self._root_id = n.node_id
                 break
 
@@ -310,7 +308,7 @@ class DecisionTree:
 
         Returns
         -------
-        dict: A tree in JSON format. Starts at the root node and recusively
+        dict: A tree in JSON format. Starts at the root node and recursively
         represents each node in JSON.
 
         - node_id              : ID of the node.
@@ -364,10 +362,10 @@ class DecisionTree:
 
         node = self.nodes[root_id]
         output = node.to_dict()
-        if node.left_id != None:
+        if node.left_id is not None:
             j = node.left_id
             output['left'] = self.to_json(j, output)
-        if node.right_id != None:
+        if node.right_id is not None:
             j = node.right_id
             output['right'] = self.to_json(j, output)
         return output
@@ -383,7 +381,7 @@ class DecisionTree:
 
         Returns
         -------
-        float or None: returns float value of predictio if leaf node and None
+        float or None: returns float value of prediction if leaf node and None
         if not.
 
         Examples
@@ -400,7 +398,7 @@ class DecisionTree:
         _raise_error_if_not_of_type(node_id, [int,long], "node_id")
         _numeric_param_check_range("node_id", node_id, 0, self.num_nodes - 1)
         node = self.nodes[node_id]
-        return None if node.is_leaf == False else node.value
+        return None if node.is_leaf is False else node.value
 
     def get_prediction_path(self, node_id, missing_id = []):
         """
